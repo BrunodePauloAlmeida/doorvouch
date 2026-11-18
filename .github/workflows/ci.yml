@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  core:
+    # Proves that the rule, the storage and the command line need nothing but
+    # the standard library: only pytest is installed here.
+    name: Logic on the standard library alone
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pytest
+      - run: python -m pytest 2>&1 | tee job.log
+      - name: TEMPORARY - show the output when a step failed
+        if: failure()
+        run: |
+          text=$(tail -n 60 job.log | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          echo "::error title=core output::${text}"
+
+  full:
+    name: Lint, types and all tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install the system library OpenCV needs
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libgl1
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync 2>&1 | tee job.log
+      - run: uv run ruff check --output-format=github . 2>&1 | tee job.log
+      - run: uv run ruff format --check . 2>&1 | tee job.log
+      - run: uv run mypy 2>&1 | tee job.log
+      - run: uv run pytest 2>&1 | tee job.log
+      - name: TEMPORARY - show the output when a step failed
+        if: failure()
+        run: |
+          text=$(tail -n 60 job.log | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          echo "::error title=output on ${RUNNER_OS}::${text}"
+
+  probe:
+    name: TEMPORARY - what the real models see (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install the system library OpenCV needs
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libgl1
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync 2>&1 | tail -n 3
+      - name: Download the models and run the self-test
+        run: |
+          { uv run doorvouch models download && uv run doorvouch doctor --no-camera; } 2>&1 | tee doctor.log || true
+          text=$(grep -v -E '^(W0000|I0000|INFO: )' doctor.log | tail -n 40 | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }' || true)
+          echo "::notice title=doctor on ${RUNNER_OS}::${text}"
+      - name: Run the real pipeline on sample photos
+        run: |
+          mkdir -p samples
+          for name in thumbs_up thumbs_down victory pointing_up; do
+            curl --fail --silent --show-error --location --output "samples/${name}.jpg" \
+              "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/${name}.jpg" 2>&1 | tee -a probe.log || true
+          done
+          ls -l samples | tee -a probe.log
+          uv run python .github/probe.py samples 2>&1 | tee -a probe.log || true
+          text=$(grep -v -E '^(W0000|I0000|INFO: )' probe.log | tail -n 70 | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }' || true)
+          echo "::notice title=probe on ${RUNNER_OS}::${text}"
+
+  lock:
+    name: TEMPORARY - write uv.lock
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: astral-sh/setup-uv@v7
+      - run: uv lock 2>&1 | tee job.log
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git commit -m "Add uv.lock written on a GitHub runner"
+          git push 2>&1 | tee -a job.log
+      - name: TEMPORARY - show the output when a step failed
+        if: failure()
+        run: |
+          text=$(tail -n 40 job.log | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
+          echo "::error title=lock output::${text}"

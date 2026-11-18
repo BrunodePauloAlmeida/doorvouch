@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "doorvouch"
+version = "0.1.0"
+description = "Local-first home entrance assistant: face recognition plus an admin's thumbs-up to vouch for visitors."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "The DoorVouch authors" }]
+keywords = ["home-security", "face-recognition", "gesture-recognition", "privacy", "local-first"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Home Automation",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
+# The decision logic in `doorvouch.core` and `doorvouch.storage` uses the standard
+# library only. These packages are needed by the camera-facing code.
+dependencies = [
+    "mediapipe>=0.10.14",
+    "numpy>=1.26",
+    "opencv-contrib-python>=4.12",
+]
+
+[project.urls]
+Repository = "https://github.com/BrunodePauloAlmeida/doorvouch"
+Issues = "https://github.com/BrunodePauloAlmeida/doorvouch/issues"
+Changelog = "https://github.com/BrunodePauloAlmeida/doorvouch/blob/main/CHANGELOG.md"
+
+[project.scripts]
+doorvouch = "doorvouch.cli:main"
+
+[dependency-groups]
+# Ruff and mypy are held to the minor versions the code was checked with, so that a
+# new release cannot change the formatting or add checks behind our back.
+dev = [
+    "mypy>=2.3,<2.4",
+    "pytest>=8.0",
+    "ruff>=0.16.9,<0.17",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/doorvouch"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "C4", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/doorvouch"]
+
+[[tool.mypy.overrides]]
+module = ["cv2", "cv2.*", "mediapipe", "mediapipe.*", "numpy", "numpy.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
