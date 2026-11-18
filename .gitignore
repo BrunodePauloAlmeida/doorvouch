@@ -1,0 +1,31 @@
+# DoorVouch data: face embeddings, snapshots, the event log and the downloaded
+# models. This is personal, biometric data. Never commit it.
+data/
+*.db
+*.db-shm
+*.db-wal
+*.onnx
+*.task
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# Tools
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage/
+htmlcov/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,6 @@
+# Check files out with the same line endings on every system.
+* text=auto eol=lf
+*.jpg binary
+*.png binary
+*.onnx binary
+*.task binary
