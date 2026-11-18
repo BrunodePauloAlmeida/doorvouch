@@ -4,9 +4,9 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-11-18
 
-To be released as 0.1.0: V0, the concept validation.
+First release: V0, the concept validation.
 
 ### Added
 
@@ -30,3 +30,7 @@ To be released as 0.1.0: V0, the concept validation.
 
 - Thresholds are uncalibrated starting points.
 - No liveness check, no alerts, no away mode, one local webcam only.
+- Not yet measured in front of a real camera: the acceptance trial in
+  `docs/v0-acceptance.md` is still to be run.
+
+[0.1.0]: https://github.com/BrunodePauloAlmeida/doorvouch/releases/tag/v0.1.0
