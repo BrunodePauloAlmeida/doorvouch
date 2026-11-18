@@ -11,9 +11,11 @@ visitor is pre-registered on the spot. The admin gives the visitor a name later.
 
 Everything runs on your own computer. No account, no cloud, no video leaving the house.
 
-> **Status: V0 (0.1.0), a concept validation.** It proves one rule end to end with a
-> webcam. It does not send alerts yet and it is not a security product. See
-> [Limitations](#limitations) and the [roadmap](docs/roadmap.md).
+> **Status: V0 (0.1.0), a concept validation.** It implements one rule end to end. The
+> rule passes its unit tests and tests that run the real models on sample photos, on
+> Linux and Windows. Measuring it in front of a real camera is the step still open (see
+> [Measuring V0](#measuring-v0)). It does not send alerts yet and it is not a security
+> product. See [Limitations](#limitations) and the [roadmap](docs/roadmap.md).
 
 ## Why
 
@@ -56,6 +58,9 @@ Unknown faces are never stored unless an admin vouches for them.
 You need a webcam and [uv](https://docs.astral.sh/uv/). uv installs the right Python
 (3.12 or newer) by itself, and the model files take about 50 MB. DoorVouch is written to
 run on Windows, macOS and Linux.
+
+On Linux, OpenCV and MediaPipe also need the system's OpenGL libraries. On Debian or
+Ubuntu: `sudo apt install libgl1 libegl1 libgles2`.
 
 Open a terminal and run:
 
@@ -133,7 +138,8 @@ Read [docs/privacy.md](docs/privacy.md) before pointing a camera at other people
 
 ## Models and licences
 
-The models are downloaded on demand and are not part of this repository.
+The models are downloaded on demand and are not part of this repository. Each file is
+checked against a pinned size and SHA-256 before it is used.
 
 | Model | Used for | Source | Licence |
 | :--- | :--- | :--- | :--- |
@@ -187,6 +193,12 @@ python -m pytest
 ```
 
 Tests that exercise the real libraries are skipped when those are not installed.
+
+`tests/test_real_models.py` goes one step further and runs the real networks on
+MediaPipe's public sample photos: a thumbs-up from an enrolled person pre-registers the
+other person in the picture, and the same gesture from somebody else is ignored. These
+tests need the model files and the photos; the file explains how to get them. CI runs
+them on Linux and on Windows.
 
 ```text
 src/doorvouch/

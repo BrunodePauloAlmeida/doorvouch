@@ -173,5 +173,10 @@ named from a second terminal is picked up by a running `doorvouch run`.
   scripted frames. No image of a real person is in the repository.
 - The adapters are tested with stand-ins for the networks, plus a few tests that call
   the real OpenCV and MediaPipe when they are installed.
-- What unit tests cannot show, the behaviour in front of a real camera, is measured by
+- `tests/test_real_models.py` runs the real networks on MediaPipe's public sample
+  photos, composed into scenes with two people. It checks recognition across two photos
+  of the same person, the gesture labels, the hand-to-face association and the whole
+  rule, down to the snapshot of the pre-registered visitor. Continuous integration
+  downloads the models and the photos and runs these tests on Linux and on Windows.
+- What no photo can show, the behaviour in front of a real camera, is measured by
   `doorvouch trial` and recorded in [v0-acceptance.md](v0-acceptance.md).

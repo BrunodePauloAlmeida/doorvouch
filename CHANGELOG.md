@@ -22,6 +22,7 @@ To be released as 0.1.0: V0, the concept validation.
   `events` and `trial`.
 - `doorvouch models download`, which verifies size and SHA-256 of the pinned models.
 - `doorvouch trial`, the acceptance trial that measures the rule on a real camera.
+- Tests that run the real models on public sample photos, on Linux and Windows.
 - Documentation: architecture, roadmap, privacy notes, acceptance protocol and three
   decision records.
 

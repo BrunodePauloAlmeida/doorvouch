@@ -44,7 +44,6 @@ def test_registry_entries_are_downloadable_over_https_and_distinct():
     for spec in models.ALL_MODELS:
         assert spec.urls and all(url.startswith("https://") for url in spec.urls)
         assert all(url.endswith(spec.filename) for url in spec.urls)
-        assert spec.sha256 is None or len(spec.sha256) == 64
         assert spec.license
 
 
@@ -70,24 +69,13 @@ def test_inspect_rejects_wrong_size_and_wrong_content(tmp_path: Path):
     assert "SHA-256" in models.inspect(SPEC, tmp_path).problem
 
 
-def test_unpinned_models_are_checked_by_size_and_leading_bytes(tmp_path: Path):
-    bundle = ModelSpec(
-        key="bundle",
-        filename="bundle.task",
-        urls=("https://example/bundle.task",),
-        license="x",
-        about="x",
-        min_size=10,
-        magic=b"PK",
-    )
-    (tmp_path / bundle.filename).write_bytes(b"PK" + b"\0" * 20)
-    assert models.inspect(bundle, tmp_path).ok
-
-    (tmp_path / bundle.filename).write_bytes(b"<html>not a model</html>")
-    assert "does not look like" in models.inspect(bundle, tmp_path).problem
-
-    (tmp_path / bundle.filename).write_bytes(b"PK")
-    assert "at least 10" in models.inspect(bundle, tmp_path).problem
+def test_every_registered_model_is_pinned_by_size_and_hash():
+    # A guess about what a file "looks like" is not a check. The gesture bundle, for
+    # one, is a zip archive that does not start with the usual zip signature.
+    for spec in models.ALL_MODELS:
+        assert spec.size > 0
+        assert len(spec.sha256) == 64
+        assert set(spec.sha256) <= set("0123456789abcdef")
 
 
 def test_download_saves_a_verified_file(tmp_path: Path):

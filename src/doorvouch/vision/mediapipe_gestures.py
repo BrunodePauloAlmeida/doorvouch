@@ -56,7 +56,7 @@ class MediaPipeGestureDetector:
             # libraries, which a bare Linux installation does not have.
             raise DoorVouchError(
                 f"MediaPipe could not load its native library: {error}. "
-                "On Debian or Ubuntu, run `sudo apt install libegl1 libgl1`."
+                "On Debian or Ubuntu, run `sudo apt install libegl1 libgles2`."
             ) from error
         except (RuntimeError, ValueError) as error:
             raise DoorVouchError(

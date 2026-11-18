@@ -35,10 +35,8 @@ class ModelSpec:
     urls: tuple[str, ...]
     license: str
     about: str
-    size: int | None = None
-    sha256: str | None = None
-    min_size: int = 1
-    magic: bytes | None = None
+    size: int
+    sha256: str
 
 
 FACE_DETECTOR = ModelSpec(
@@ -70,19 +68,20 @@ FACE_RECOGNIZER = ModelSpec(
     sha256="0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
 )
 
-# Google publishes this bundle under a "latest" URL, so its hash cannot be pinned.
-# It is checked for being a plausible MediaPipe task bundle (a zip archive).
+# Version 1 of Google's bundle. The "latest" address serves the same bytes today
+# and is only accepted for as long as it still does.
+_GESTURES = "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer"
 GESTURE_RECOGNIZER = ModelSpec(
     key="gesture_recognizer",
     filename="gesture_recognizer.task",
     urls=(
-        "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/"
-        "gesture_recognizer/float16/latest/gesture_recognizer.task",
+        f"{_GESTURES}/float16/1/gesture_recognizer.task",
+        f"{_GESTURES}/float16/latest/gesture_recognizer.task",
     ),
     license="see Google's model card",
     about="MediaPipe hand gesture recognizer",
-    min_size=1_000_000,
-    magic=b"PK",
+    size=8_373_440,
+    sha256="97952348cf6a6a4915c2ea1496b4b37ebabc50cbbf80571435643c455f2b0482",
 )
 
 ALL_MODELS: tuple[ModelSpec, ...] = (FACE_DETECTOR, FACE_RECOGNIZER, GESTURE_RECOGNIZER)
@@ -114,26 +113,19 @@ def _inspect_file(spec: ModelSpec, path: Path) -> Inspection:
         return Inspection(path, "missing")
     digest = hashlib.sha256()
     size = 0
-    head = b""
     with path.open("rb") as handle:
         while chunk := handle.read(_CHUNK):
-            if not size:
-                head = chunk[:16]
             digest.update(chunk)
             size += len(chunk)
     checksum = digest.hexdigest()
-    return Inspection(path, _problem(spec, size, checksum, head), size, checksum)
+    return Inspection(path, _problem(spec, size, checksum), size, checksum)
 
 
-def _problem(spec: ModelSpec, size: int, checksum: str, head: bytes) -> str | None:
-    if spec.size is not None and size != spec.size:
+def _problem(spec: ModelSpec, size: int, checksum: str) -> str | None:
+    if size != spec.size:
         return f"size is {size} bytes, expected {spec.size}"
-    if size < spec.min_size:
-        return f"size is {size} bytes, expected at least {spec.min_size}"
-    if spec.sha256 is not None and checksum != spec.sha256:
+    if checksum != spec.sha256:
         return f"SHA-256 is {checksum}, expected {spec.sha256}"
-    if spec.magic is not None and not head.startswith(spec.magic):
-        return "the file does not look like the expected kind of model"
     return None
 
 

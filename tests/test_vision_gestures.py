@@ -169,7 +169,7 @@ def test_a_missing_system_library_is_explained(tmp_path, monkeypatch):
     with pytest.raises(DoorVouchError) as raised:
         MediaPipeGestureDetector.from_model(model)
     assert "libEGL.so.1" in str(raised.value)
-    assert "sudo apt install libegl1 libgl1" in str(raised.value)
+    assert "sudo apt install libegl1 libgles2" in str(raised.value)
 
 
 def test_real_mediapipe_rejects_a_file_that_is_not_a_model(tmp_path):

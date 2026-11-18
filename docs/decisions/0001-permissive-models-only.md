@@ -28,8 +28,7 @@ without copyleft obligations. For V0 these are:
 
 Model files are never committed. `doorvouch models download` fetches them from their
 publishers and checks size and SHA-256 against values pinned in `doorvouch/models.py`.
-The MediaPipe bundle is published under a "latest" address, so its hash cannot be
-pinned; it is checked for size and file type instead.
+That includes the MediaPipe bundle, which is fetched from its versioned address.
 
 ## Consequences
 
