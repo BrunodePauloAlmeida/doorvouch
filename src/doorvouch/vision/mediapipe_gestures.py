@@ -51,6 +51,13 @@ class MediaPipeGestureDetector:
         )
         try:
             recognizer = vision.GestureRecognizer.create_from_options(options)
+        except OSError as error:
+            # MediaPipe loads a native library that needs the system's OpenGL
+            # libraries, which a bare Linux installation does not have.
+            raise DoorVouchError(
+                f"MediaPipe could not load its native library: {error}. "
+                "On Debian or Ubuntu, run `sudo apt install libegl1 libgl1`."
+            ) from error
         except (RuntimeError, ValueError) as error:
             raise DoorVouchError(
                 f"MediaPipe could not load {model.name}: {error}. "

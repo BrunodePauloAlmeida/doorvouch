@@ -44,11 +44,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v6
-      - name: Install the system library OpenCV needs
+      - name: Install the system libraries OpenCV and MediaPipe need
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libgl1
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libgl1 libegl1
       - uses: astral-sh/setup-uv@v7
-      - run: uv sync 2>&1 | tee job.log
+      - run: uv sync --locked 2>&1 | tee job.log
       - run: uv run ruff check --output-format=github . 2>&1 | tee job.log
       - run: uv run ruff format --check . 2>&1 | tee job.log
       - run: uv run mypy 2>&1 | tee job.log
@@ -68,48 +68,36 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v6
-      - name: Install the system library OpenCV needs
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libgl1
       - uses: astral-sh/setup-uv@v7
-      - run: uv sync 2>&1 | tail -n 3
-      - name: Download the models and run the self-test
+      - run: uv sync --locked 2>&1 | tail -n 3
+      - name: Shared libraries missing on a stock runner
+        if: runner.os == 'Linux'
         run: |
-          { uv run doorvouch models download && uv run doorvouch doctor --no-camera; } 2>&1 | tee doctor.log || true
-          text=$(grep -v -E '^(W0000|I0000|INFO: )' doctor.log | tail -n 40 | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }' || true)
-          echo "::notice title=doctor on ${RUNNER_OS}::${text}"
+          text=$( { for lib in $(find .venv -name 'libmediapipe.so' -o -name 'cv2*.so' | head -n 4); do echo "$lib"; ldd "$lib" | grep 'not found' || echo '  nothing missing'; done; } | awk '{ printf "%s%%0A", $0 }' || true)
+          echo "::notice title=ldd before apt::${text}"
+      - name: Install the system libraries OpenCV and MediaPipe need
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libgl1 libegl1
+      - name: Facts about the gesture model files
+        run: |
+          mkdir -p probe-models
+          base=https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16
+          curl --fail --silent --show-error --location --output probe-models/latest.task "$base/latest/gesture_recognizer.task" 2>&1 | tee -a facts.log || true
+          curl --fail --silent --show-error --location --output probe-models/v1.task "$base/1/gesture_recognizer.task" 2>&1 | tee -a facts.log || true
+          uv run python .github/facts.py probe-models 2>&1 | tee -a facts.log || true
+          text=$(tail -n 30 facts.log | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }' || true)
+          echo "::notice title=model facts on ${RUNNER_OS}::${text}"
       - name: Run the real pipeline on sample photos
         run: |
+          uv run doorvouch models download 2>&1 | tail -n 6 || true
           mkdir -p samples
           for name in thumbs_up thumbs_down victory pointing_up; do
             curl --fail --silent --show-error --location --output "samples/${name}.jpg" \
               "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/${name}.jpg" 2>&1 | tee -a probe.log || true
           done
-          ls -l samples | tee -a probe.log
-          uv run python .github/probe.py samples 2>&1 | tee -a probe.log || true
-          text=$(grep -v -E '^(W0000|I0000|INFO: )' probe.log | tail -n 70 | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }' || true)
+          for model in probe-models/*.task; do
+            echo "== gesture model: ${model}" | tee -a probe.log
+            uv run python .github/probe.py samples "${model}" 2>&1 | tee -a probe.log || true
+          done
+          text=$(grep -v -E '^(W0000|I0000|INFO: )' probe.log | tail -n 80 | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }' || true)
           echo "::notice title=probe on ${RUNNER_OS}::${text}"
-
-  lock:
-    name: TEMPORARY - write uv.lock
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.head_ref }}
-      - uses: astral-sh/setup-uv@v7
-      - run: uv lock 2>&1 | tee job.log
-      - run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add uv.lock
-          git commit -m "Add uv.lock written on a GitHub runner"
-          git push 2>&1 | tee -a job.log
-      - name: TEMPORARY - show the output when a step failed
-        if: failure()
-        run: |
-          text=$(tail -n 40 job.log | tr -d '\r' | sed -e 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')
-          echo "::error title=lock output::${text}"

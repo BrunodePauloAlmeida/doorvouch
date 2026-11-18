@@ -19,7 +19,12 @@ from doorvouch.storage import SqliteStore
 from doorvouch.vision.mediapipe_gestures import MediaPipeGestureDetector
 from doorvouch.vision.opencv_faces import OpenCvFaceAnalyzer, face_jpeg
 
-paths = models.require(Settings.load().models_dir)
+directory = Settings.load().models_dir
+paths = {
+    "face_detector": directory / models.FACE_DETECTOR.filename,
+    "face_recognizer": directory / models.FACE_RECOGNIZER.filename,
+    "gesture_recognizer": Path(sys.argv[2]),
+}
 faces = OpenCvFaceAnalyzer.from_models(paths["face_detector"], paths["face_recognizer"])
 print(f"opencv {cv2.__version__} mediapipe {mediapipe.__version__} python {sys.version.split()[0]}")
 

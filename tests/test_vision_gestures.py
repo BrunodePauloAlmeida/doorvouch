@@ -154,6 +154,24 @@ def test_installed_mediapipe_has_everything_the_adapter_uses():
     )
 
 
+def test_a_missing_system_library_is_explained(tmp_path, monkeypatch):
+    pytest.importorskip("mediapipe")
+    pytest.importorskip("cv2")
+    from mediapipe.tasks.python import vision
+
+    def missing_library(options):
+        raise OSError("libEGL.so.1: cannot open shared object file: No such file or directory")
+
+    monkeypatch.setattr(vision.GestureRecognizer, "create_from_options", missing_library)
+    model = tmp_path / "gesture_recognizer.task"
+    model.write_bytes(b"PK")
+
+    with pytest.raises(DoorVouchError) as raised:
+        MediaPipeGestureDetector.from_model(model)
+    assert "libEGL.so.1" in str(raised.value)
+    assert "sudo apt install libegl1 libgl1" in str(raised.value)
+
+
 def test_real_mediapipe_rejects_a_file_that_is_not_a_model(tmp_path):
     pytest.importorskip("mediapipe")
     pytest.importorskip("cv2")
